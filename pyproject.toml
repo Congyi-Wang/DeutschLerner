@@ -1,0 +1,59 @@
+[project]
+name = "deutsch-lerner"
+version = "1.0.0"
+description = "Self-hosted German language learning assistant (Chinese → German)"
+requires-python = ">=3.11"
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+
+    # Database
+    "sqlalchemy>=2.0",
+    "aiosqlite>=0.20.0",
+
+    # AI SDKs
+    "anthropic>=0.40.0",
+    "openai>=1.50.0",
+    "google-genai>=1.0.0",
+
+    # Scheduling
+    "apscheduler>=3.10",
+
+    # Notifications
+    "discord.py>=2.3",
+    "twilio>=9.0",
+
+    # CLI
+    "click>=8.1",
+    "rich>=13.0",
+
+    # Config
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+
+    # HTTP client (for Kimi/DeepSeek)
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

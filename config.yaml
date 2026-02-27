@@ -1,0 +1,45 @@
+# DeutschLerner Configuration
+app:
+  name: "DeutschLerner"
+  version: "1.0.0"
+  debug: false
+  log_level: "INFO"
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  api_key: "${DEUTSCH_LERNER_API_KEY}"
+
+ai:
+  default_provider: "claude"
+  default_model: null
+  timeout: 60
+  max_retries: 3
+
+database:
+  path: "data/deutsch_lerner.db"
+
+heartbeat:
+  enabled: true
+  schedule:
+    type: "cron"
+    hour: 9
+    minute: 0
+    timezone: "Europe/Berlin"
+  channels:
+    discord:
+      enabled: true
+      bot_token: "${DISCORD_BOT_TOKEN}"
+      channel_id: "${DISCORD_CHANNEL_ID}"
+    whatsapp:
+      enabled: false
+      account_sid: "${TWILIO_ACCOUNT_SID}"
+      auth_token: "${TWILIO_AUTH_TOKEN}"
+      from_number: "${TWILIO_WHATSAPP_FROM}"
+      to_number: "${WHATSAPP_TO}"
+
+learning:
+  difficulty: "A2"
+  vocab_per_topic: 8
+  sentences_per_topic: 4
+  teaching_language: "chinese"
