@@ -96,6 +96,29 @@ class Repository:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def get_forgotten_vocabulary(self, count: int = 5) -> list[Vocabulary]:
+        """Get words marked as 'known' but with low review count — likely forgotten."""
+        query = (
+            select(Vocabulary)
+            .where(Vocabulary.status == "known")
+            .where(Vocabulary.review_count <= 2)
+            .order_by(Vocabulary.last_reviewed_at.asc().nullsfirst(), Vocabulary.review_count.asc())
+            .limit(count)
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_quiz_vocabulary(self, count: int = 8) -> list[Vocabulary]:
+        """Get a mix of known and learning words for quiz."""
+        query = (
+            select(Vocabulary)
+            .where(Vocabulary.status.in_(["known", "learning"]))
+            .order_by(func.random())
+            .limit(count)
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
     # ── Sentences ───────────────────────────────────────────────
 
     async def add_sentence(self, **kwargs: object) -> Sentence:

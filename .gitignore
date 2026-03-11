@@ -13,3 +13,13 @@ build/
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Flutter
+app/build/
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/android/.gradle/
+app/android/local.properties
+*.apk

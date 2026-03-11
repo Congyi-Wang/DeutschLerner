@@ -11,7 +11,7 @@ server:
   api_key: "${DEUTSCH_LERNER_API_KEY}"
 
 ai:
-  default_provider: "claude"
+  default_provider: "claude_cli"
   default_model: null
   timeout: 60
   max_retries: 3
@@ -28,7 +28,7 @@ heartbeat:
     timezone: "Europe/Berlin"
   channels:
     discord:
-      enabled: true
+      enabled: false
       bot_token: "${DISCORD_BOT_TOKEN}"
       channel_id: "${DISCORD_CHANNEL_ID}"
     whatsapp:
