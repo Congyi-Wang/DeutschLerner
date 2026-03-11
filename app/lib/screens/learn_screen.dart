@@ -174,6 +174,13 @@ class _LearnScreenState extends State<LearnScreen> {
                       icon: const Icon(Icons.volume_up, color: Color(0xFFFFCC00)),
                       onPressed: () =>
                           _tts.speak(_result!['topic_title_de'] ?? ''),
+                      tooltip: '正常语速',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.slow_motion_video, color: Colors.orange),
+                      onPressed: () =>
+                          _tts.speakSlow(_result!['topic_title_de'] ?? ''),
+                      tooltip: '慢速朗读',
                     ),
                   ],
                 ),
@@ -270,11 +277,26 @@ class _LearnScreenState extends State<LearnScreen> {
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.volume_up,
-                            color: Colors.blue.shade600, size: 22),
-                        onPressed: () => _tts.speak(v['german'] ?? ''),
-                        tooltip: '朗读',
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.volume_up,
+                                color: Colors.blue.shade600, size: 22),
+                            onPressed: () => _tts.speak(v['german'] ?? ''),
+                            tooltip: '正常语速',
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(4),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.slow_motion_video,
+                                color: Colors.orange.shade600, size: 18),
+                            onPressed: () => _tts.speakSlow(v['german'] ?? ''),
+                            tooltip: '慢速朗读',
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(4),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -307,10 +329,31 @@ class _LearnScreenState extends State<LearnScreen> {
                             icon: Icon(Icons.volume_up,
                                 color: Colors.blue.shade600, size: 20),
                             onPressed: () => _tts.speak(s['german'] ?? ''),
-                            tooltip: '朗读',
+                            tooltip: '正常语速',
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(4),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.slow_motion_video,
+                                color: Colors.orange.shade600, size: 18),
+                            onPressed: () => _tts.speakSlow(s['german'] ?? ''),
+                            tooltip: '慢速朗读',
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(4),
                           ),
                         ],
                       ),
+                      // IPA phonetics for sentence
+                      if (s['phonetic'] != null &&
+                          s['phonetic'].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2, bottom: 4),
+                          child: Text(s['phonetic'],
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.purple.shade400,
+                                  fontStyle: FontStyle.italic)),
+                        ),
                       Text(s['chinese'] ?? '',
                           style: TextStyle(color: Colors.grey.shade600)),
                       if (s['grammar_note'] != null) ...[

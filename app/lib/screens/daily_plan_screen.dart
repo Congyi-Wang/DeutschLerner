@@ -400,9 +400,31 @@ class _SentencePracticeSheet extends StatelessWidget {
                       icon: Icon(Icons.volume_up,
                           color: Colors.blue.shade600, size: 20),
                       onPressed: () => _tts.speak(s['german'] ?? ''),
+                      tooltip: '正常语速',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.slow_motion_video,
+                          color: Colors.orange.shade600, size: 18),
+                      onPressed: () => _tts.speakSlow(s['german'] ?? ''),
+                      tooltip: '慢速朗读',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
                     ),
                   ],
                 ),
+                // IPA phonetics for sentence
+                if (s['phonetic'] != null &&
+                    s['phonetic'].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(s['phonetic'],
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.purple.shade400,
+                            fontStyle: FontStyle.italic)),
+                  ),
                 Text(s['chinese'] ?? '',
                     style: TextStyle(color: Colors.grey.shade600)),
                 if (s['grammar_notes'] != null) ...[
@@ -489,11 +511,24 @@ class _ReviewPageState extends State<_ReviewPage> {
                       fontStyle: FontStyle.italic)),
             ],
             const SizedBox(height: 16),
-            // TTS button
-            IconButton(
-              icon: Icon(Icons.volume_up,
-                  color: Colors.blue.shade600, size: 32),
-              onPressed: () => _tts.speak(item['german'] ?? ''),
+            // TTS buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.volume_up,
+                      color: Colors.blue.shade600, size: 32),
+                  onPressed: () => _tts.speak(item['german'] ?? ''),
+                  tooltip: '正常语速',
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(Icons.slow_motion_video,
+                      color: Colors.orange.shade600, size: 28),
+                  onPressed: () => _tts.speakSlow(item['german'] ?? ''),
+                  tooltip: '慢速朗读',
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
@@ -647,10 +682,22 @@ class _QuizPageState extends State<_QuizPage> {
               Text(item['gender'],
                   style: TextStyle(color: Colors.grey.shade600)),
             const SizedBox(height: 8),
-            IconButton(
-              icon: Icon(Icons.volume_up,
-                  color: Colors.blue.shade600, size: 28),
-              onPressed: () => _tts.speak(item['german'] ?? ''),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.volume_up,
+                      color: Colors.blue.shade600, size: 28),
+                  onPressed: () => _tts.speak(item['german'] ?? ''),
+                  tooltip: '正常语速',
+                ),
+                IconButton(
+                  icon: Icon(Icons.slow_motion_video,
+                      color: Colors.orange.shade600, size: 24),
+                  onPressed: () => _tts.speakSlow(item['german'] ?? ''),
+                  tooltip: '慢速朗读',
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             ...List.generate(options.length, (i) {

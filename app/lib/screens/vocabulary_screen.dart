@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/tts_service.dart';
 
 class VocabularyScreen extends StatefulWidget {
   final ApiService api;
@@ -11,6 +12,7 @@ class VocabularyScreen extends StatefulWidget {
 
 class _VocabularyScreenState extends State<VocabularyScreen>
     with SingleTickerProviderStateMixin {
+  final _tts = TtsService();
   late TabController _tabCtrl;
   List _allItems = [];
   List _knownItems = [];
@@ -23,6 +25,7 @@ class _VocabularyScreenState extends State<VocabularyScreen>
   void initState() {
     super.initState();
     _tabCtrl = TabController(length: 4, vsync: this);
+    _tts.init();
     _loadData();
   }
 
@@ -115,45 +118,92 @@ class _VocabularyScreenState extends State<VocabularyScreen>
           final v = items[i];
           return Card(
             margin: const EdgeInsets.only(bottom: 4),
-            child: ListTile(
-              title: Row(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
                 children: [
-                  Text(v['german'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  if (v['gender'] != null) ...[
-                    const SizedBox(width: 6),
-                    Text(v['gender'],
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.blue.shade400)),
-                  ],
-                ],
-              ),
-              subtitle: Text(v['chinese'] ?? ''),
-              trailing: PopupMenuButton<String>(
-                icon: _statusIcon(v['status']),
-                onSelected: (s) => _updateStatus(v['id'], s),
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                      value: 'unknown',
-                      child: Row(children: [
-                        Icon(Icons.circle, color: Colors.red, size: 14),
-                        SizedBox(width: 8),
-                        Text('未学'),
-                      ])),
-                  const PopupMenuItem(
-                      value: 'learning',
-                      child: Row(children: [
-                        Icon(Icons.circle, color: Colors.orange, size: 14),
-                        SizedBox(width: 8),
-                        Text('学习中'),
-                      ])),
-                  const PopupMenuItem(
-                      value: 'known',
-                      child: Row(children: [
-                        Icon(Icons.circle, color: Colors.green, size: 14),
-                        SizedBox(width: 8),
-                        Text('已掌握'),
-                      ])),
+                  // TTS buttons
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => _tts.speak(v['german'] ?? ''),
+                        child: Icon(Icons.volume_up,
+                            color: Colors.blue.shade600, size: 22),
+                      ),
+                      const SizedBox(height: 4),
+                      InkWell(
+                        onTap: () => _tts.speakSlow(v['german'] ?? ''),
+                        child: Icon(Icons.slow_motion_video,
+                            color: Colors.orange.shade600, size: 18),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  // Word info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(v['german'] ?? '',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16)),
+                            ),
+                            if (v['gender'] != null) ...[
+                              const SizedBox(width: 6),
+                              Text(v['gender'],
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.blue.shade400)),
+                            ],
+                          ],
+                        ),
+                        // IPA phonetics
+                        if (v['phonetic'] != null &&
+                            v['phonetic'].toString().isNotEmpty)
+                          Text(v['phonetic'],
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.purple.shade400,
+                                  fontStyle: FontStyle.italic)),
+                        Text(v['chinese'] ?? '',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey.shade600)),
+                      ],
+                    ),
+                  ),
+                  // Status menu
+                  PopupMenuButton<String>(
+                    icon: _statusIcon(v['status']),
+                    onSelected: (s) => _updateStatus(v['id'], s),
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                          value: 'unknown',
+                          child: Row(children: [
+                            Icon(Icons.circle, color: Colors.red, size: 14),
+                            SizedBox(width: 8),
+                            Text('未学'),
+                          ])),
+                      const PopupMenuItem(
+                          value: 'learning',
+                          child: Row(children: [
+                            Icon(Icons.circle, color: Colors.orange, size: 14),
+                            SizedBox(width: 8),
+                            Text('学习中'),
+                          ])),
+                      const PopupMenuItem(
+                          value: 'known',
+                          child: Row(children: [
+                            Icon(Icons.circle, color: Colors.green, size: 14),
+                            SizedBox(width: 8),
+                            Text('已掌握'),
+                          ])),
+                    ],
+                  ),
                 ],
               ),
             ),
