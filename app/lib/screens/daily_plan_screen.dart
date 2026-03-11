@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/tts_service.dart';
 import 'learn_screen.dart';
 
 class DailyPlanScreen extends StatefulWidget {
@@ -12,24 +13,33 @@ class DailyPlanScreen extends StatefulWidget {
 
 class _DailyPlanScreenState extends State<DailyPlanScreen> {
   Map<String, dynamic>? _plan;
+  Map<String, dynamic>? _chapter;
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadPlan();
+    _loadAll();
   }
 
-  Future<void> _loadPlan() async {
+  Future<void> _loadAll() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final plan = await widget.api.getDailyPlan();
+      // Load plan and chapter in parallel
+      final results = await Future.wait([
+        widget.api.getDailyPlan(),
+        widget.api.getTodayChapter().catchError((_) => <String, dynamic>{}),
+      ]);
       setState(() {
-        _plan = plan;
+        _plan = results[0];
+        final ch = results[1];
+        if (ch.isNotEmpty && ch['available'] == true) {
+          _chapter = ch;
+        }
         _loading = false;
       });
     } catch (e) {
@@ -76,15 +86,27 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
 
   void _openTask(Map<String, dynamic> task) {
     final type = task['type'] as String;
-    final data = task['data'] as Map<String, dynamic>;
 
     if (type == 'new_topic') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => LearnScreen(api: widget.api, autoStart: true),
-        ),
-      );
+      // If we have a pre-generated chapter, use it
+      if (_chapter != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LearnScreen(
+              api: widget.api,
+              preloadedChapter: _chapter,
+            ),
+          ),
+        );
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LearnScreen(api: widget.api, autoStart: true),
+          ),
+        );
+      }
       return;
     }
 
@@ -126,51 +148,10 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
       builder: (_) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.7,
-        builder: (_, ctrl) => ListView.builder(
+        builder: (_, ctrl) => _SentencePracticeSheet(
           controller: ctrl,
-          padding: const EdgeInsets.all(16),
-          itemCount: items.length + 1,
-          itemBuilder: (_, i) {
-            if (i == 0) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(task['title_cn'] ?? '句型练习',
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold)),
-              );
-            }
-            final s = items[i - 1];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(s['german'] ?? '',
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text(s['chinese'] ?? '',
-                        style: TextStyle(color: Colors.grey.shade600)),
-                    if (s['grammar_notes'] != null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(s['grammar_notes'],
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.blue.shade700)),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          },
+          title: task['title_cn'] ?? '句型练习',
+          items: items,
         ),
       ),
     );
@@ -213,7 +194,7 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadPlan,
+            onPressed: _loadAll,
           ),
         ],
       ),
@@ -227,7 +208,7 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
                       Text(_error!, style: const TextStyle(color: Colors.red)),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                          onPressed: _loadPlan, child: const Text('重试')),
+                          onPressed: _loadAll, child: const Text('重试')),
                     ],
                   ),
                 )
@@ -243,10 +224,36 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
     final vocabStats = stats['vocabulary'] ?? {};
 
     return RefreshIndicator(
-      onRefresh: _loadPlan,
+      onRefresh: _loadAll,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Pre-generated chapter banner
+          if (_chapter != null) ...[
+            Card(
+              color: Colors.green.shade50,
+              child: ListTile(
+                leading: const Icon(Icons.auto_stories, color: Colors.green),
+                title: Text(_chapter!['topic_title_de'] ?? '今日课程已就绪'),
+                subtitle: Text(_chapter!['topic_title_cn'] ?? '点击开始学习'),
+                trailing:
+                    const Icon(Icons.chevron_right, color: Colors.green),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => LearnScreen(
+                        api: widget.api,
+                        preloadedChapter: _chapter,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
           // Greeting card
           Card(
             color: const Color(0xFF1A1A1A),
@@ -261,14 +268,16 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(Icons.timer, color: Color(0xFFFFCC00), size: 18),
+                      const Icon(Icons.timer,
+                          color: Color(0xFFFFCC00), size: 18),
                       const SizedBox(width: 4),
                       Text('$totalMin 分钟',
                           style: const TextStyle(
                               color: Color(0xFFFFCC00),
                               fontWeight: FontWeight.bold)),
                       const SizedBox(width: 16),
-                      const Icon(Icons.book, color: Color(0xFFFFCC00), size: 18),
+                      const Icon(Icons.book,
+                          color: Color(0xFFFFCC00), size: 18),
                       const SizedBox(width: 4),
                       Text('${tasks.length} 个任务',
                           style: const TextStyle(
@@ -337,13 +346,88 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
         Text('$value',
             style: TextStyle(
                 fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+        Text(label,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
       ],
     );
   }
 }
 
-// --- Vocab Review Page ---
+// --- Sentence Practice Sheet with TTS ---
+class _SentencePracticeSheet extends StatelessWidget {
+  final ScrollController controller;
+  final String title;
+  final List items;
+  final _tts = TtsService();
+
+  _SentencePracticeSheet({
+    required this.controller,
+    required this.title,
+    required this.items,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      controller: controller,
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length + 1,
+      itemBuilder: (_, i) {
+        if (i == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(title,
+                style: const TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold)),
+          );
+        }
+        final s = items[i - 1];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(s['german'] ?? '',
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.volume_up,
+                          color: Colors.blue.shade600, size: 20),
+                      onPressed: () => _tts.speak(s['german'] ?? ''),
+                    ),
+                  ],
+                ),
+                Text(s['chinese'] ?? '',
+                    style: TextStyle(color: Colors.grey.shade600)),
+                if (s['grammar_notes'] != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(s['grammar_notes'],
+                        style: TextStyle(
+                            fontSize: 13, color: Colors.blue.shade700)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// --- Vocab Review Page with TTS ---
 class _ReviewPage extends StatefulWidget {
   final String title;
   final List items;
@@ -357,6 +441,7 @@ class _ReviewPage extends StatefulWidget {
 }
 
 class _ReviewPageState extends State<_ReviewPage> {
+  final _tts = TtsService();
   int _currentIndex = 0;
   bool _showAnswer = false;
 
@@ -383,15 +468,34 @@ class _ReviewPageState extends State<_ReviewPage> {
             // German word
             Text(
               item['german'] ?? '',
-              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+              style:
+                  const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             if (item['gender'] != null) ...[
               const SizedBox(height: 4),
               Text(item['gender'],
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+                  style:
+                      TextStyle(fontSize: 16, color: Colors.grey.shade600)),
             ],
-            const SizedBox(height: 32),
+            // IPA
+            if (item['phonetic'] != null &&
+                item['phonetic'].toString().isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(item['phonetic'],
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.purple.shade400,
+                      fontStyle: FontStyle.italic)),
+            ],
+            const SizedBox(height: 16),
+            // TTS button
+            IconButton(
+              icon: Icon(Icons.volume_up,
+                  color: Colors.blue.shade600, size: 32),
+              onPressed: () => _tts.speak(item['german'] ?? ''),
+            ),
+            const SizedBox(height: 16),
 
             // Answer
             if (_showAnswer) ...[
@@ -429,7 +533,8 @@ class _ReviewPageState extends State<_ReviewPage> {
                 height: 48,
                 child: ElevatedButton(
                   onPressed: () => setState(() => _showAnswer = true),
-                  child: const Text('显示答案', style: TextStyle(fontSize: 16)),
+                  child:
+                      const Text('显示答案', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
@@ -475,6 +580,7 @@ class _QuizPage extends StatefulWidget {
 }
 
 class _QuizPageState extends State<_QuizPage> {
+  final _tts = TtsService();
   int _index = 0;
   int _correct = 0;
   bool _answered = false;
@@ -489,7 +595,8 @@ class _QuizPageState extends State<_QuizPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.emoji_events, size: 64, color: Color(0xFFFFCC00)),
+              const Icon(Icons.emoji_events,
+                  size: 64, color: Color(0xFFFFCC00)),
               const SizedBox(height: 16),
               Text('$_correct / ${widget.items.length}',
                   style: const TextStyle(
@@ -514,14 +621,12 @@ class _QuizPageState extends State<_QuizPage> {
     }
 
     final item = widget.items[_index];
-    // Generate options: correct + 3 random wrong from pool
     final options = <String>[item['chinese']];
     for (final other in widget.items) {
       if (other['chinese'] != item['chinese'] && options.length < 4) {
         options.add(other['chinese']);
       }
     }
-    // Pad if not enough
     while (options.length < 4) {
       options.add('---');
     }
@@ -529,20 +634,25 @@ class _QuizPageState extends State<_QuizPage> {
 
     return Scaffold(
       appBar: AppBar(
-          title:
-              Text('测验 (${_index + 1}/${widget.items.length})')),
+          title: Text('测验 (${_index + 1}/${widget.items.length})')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(item['german'] ?? '',
-                style:
-                    const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                style: const TextStyle(
+                    fontSize: 32, fontWeight: FontWeight.bold)),
             if (item['gender'] != null)
               Text(item['gender'],
                   style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 40),
+            const SizedBox(height: 8),
+            IconButton(
+              icon: Icon(Icons.volume_up,
+                  color: Colors.blue.shade600, size: 28),
+              onPressed: () => _tts.speak(item['german'] ?? ''),
+            ),
+            const SizedBox(height: 24),
             ...List.generate(options.length, (i) {
               final isCorrect = options[i] == item['chinese'];
               Color? bgColor;
@@ -565,8 +675,8 @@ class _QuizPageState extends State<_QuizPage> {
                               _selectedOption = i;
                               if (isCorrect) _correct++;
                             });
-                            Future.delayed(const Duration(milliseconds: 800),
-                                () {
+                            Future.delayed(
+                                const Duration(milliseconds: 800), () {
                               if (mounted) {
                                 setState(() {
                                   _index++;

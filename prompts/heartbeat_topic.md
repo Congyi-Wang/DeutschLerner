@@ -14,6 +14,7 @@
     {
       "german": "德语单词",
       "chinese": "中文翻译",
+      "phonetic": "国际音标（IPA），例如 /ˈvɔːnʊŋ/",
       "gender": "der/die/das",
       "part_of_speech": "词性",
       "example_de": "德语例句",
@@ -27,6 +28,17 @@
       "grammar_note": "语法说明"
     }
   ],
+  "grammar_analysis": {
+    "title": "本课语法重点",
+    "points": [
+      {
+        "name": "语法点名称",
+        "explanation": "语法解释（中文）",
+        "examples": ["德语例句"],
+        "rule": "语法规则总结"
+      }
+    ]
+  },
   "grammar_tips": "语法提示",
   "daily_tip": "每日一句学习小贴士（中文）"
 }
@@ -35,6 +47,8 @@
 ## 规则
 - 词汇数量：5-8个
 - 句子数量：3-4个
+- 每个词汇必须包含国际音标（IPA）标注
+- grammar_analysis中至少包含1个语法点
 - 内容简洁实用，适合在手机上快速阅读
 - 每次生成不同的具体话题（即使类别相同）
 - 所有解释用中文

@@ -25,6 +25,7 @@ class LearnResponse(BaseModel):
     vocabulary: list[dict]
     sentences: list[dict]
     grammar_tips: str
+    grammar_analysis: dict | None = None
     exercise: str
     vocab_added: int
     sentences_added: int
@@ -52,6 +53,7 @@ async def learn_topic(
         vocabulary=result.topic.vocabulary,
         sentences=result.topic.sentences,
         grammar_tips=result.topic.grammar_tips,
+        grammar_analysis=result.topic.grammar_analysis,
         exercise=result.topic.exercise,
         vocab_added=result.vocab_added,
         sentences_added=result.sentences_added,

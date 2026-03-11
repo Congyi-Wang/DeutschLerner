@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.dependencies import get_config, get_db_path, init_provider_from_config, load_config
 from src.api.middleware import APIKeyMiddleware, RequestLoggingMiddleware
-from src.api.routes import daily_plan, health, heartbeat, learning, memory, provider, sentences, vocabulary
+from src.api.routes import chapter, daily_plan, health, heartbeat, learning, memory, provider, sentences, vocabulary
 from src.storage.database import close_engine, get_engine
 from src.storage.migrations import run_migrations
 
@@ -90,6 +90,7 @@ def create_app() -> FastAPI:
     # Routes
     prefix = "/api/v1"
     app.include_router(health.router, prefix=prefix, tags=["System"])
+    app.include_router(chapter.router, prefix=prefix, tags=["Chapter"])
     app.include_router(daily_plan.router, prefix=prefix, tags=["Daily Plan"])
     app.include_router(learning.router, prefix=prefix, tags=["Learning"])
     app.include_router(vocabulary.router, prefix=prefix, tags=["Vocabulary"])

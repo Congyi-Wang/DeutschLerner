@@ -106,6 +106,13 @@ class ApiService {
   Future<Map<String, dynamic>> getVocabularyStats() =>
       _get('/api/v1/vocabulary/stats');
 
+  // Chapter (pre-generated daily content)
+  Future<Map<String, dynamic>> getTodayChapter() =>
+      _get('/api/v1/chapter/today');
+
+  Future<Map<String, dynamic>> getChapterByDate(String date) =>
+      _get('/api/v1/chapter/$date');
+
   // Stats
   Future<Map<String, dynamic>> getStats() => _get('/api/v1/memory/stats');
 }

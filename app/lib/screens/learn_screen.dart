@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/tts_service.dart';
 
 class LearnScreen extends StatefulWidget {
   final ApiService api;
   final bool autoStart;
-  const LearnScreen({super.key, required this.api, this.autoStart = false});
+  final Map<String, dynamic>? preloadedChapter;
+  const LearnScreen({
+    super.key,
+    required this.api,
+    this.autoStart = false,
+    this.preloadedChapter,
+  });
 
   @override
   State<LearnScreen> createState() => _LearnScreenState();
@@ -12,6 +19,7 @@ class LearnScreen extends StatefulWidget {
 
 class _LearnScreenState extends State<LearnScreen> {
   final _inputCtrl = TextEditingController();
+  final _tts = TtsService();
   Map<String, dynamic>? _result;
   bool _loading = false;
   String? _error;
@@ -30,10 +38,20 @@ class _LearnScreenState extends State<LearnScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.autoStart) {
+    _tts.init();
+    if (widget.preloadedChapter != null) {
+      _result = widget.preloadedChapter;
+    } else if (widget.autoStart) {
       _inputCtrl.text = _suggestions[DateTime.now().day % _suggestions.length];
       _generate();
     }
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    _inputCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _generate() async {
@@ -70,7 +88,8 @@ class _LearnScreenState extends State<LearnScreen> {
                 children: [
                   CircularProgressIndicator(),
                   SizedBox(height: 16),
-                  Text('AI正在生成学习内容...', style: TextStyle(color: Colors.grey)),
+                  Text('AI正在生成学习内容...',
+                      style: TextStyle(color: Colors.grey)),
                 ],
               ),
             )
@@ -129,11 +148,12 @@ class _LearnScreenState extends State<LearnScreen> {
   Widget _buildResult() {
     final vocab = (_result!['vocabulary'] as List?) ?? [];
     final sentences = (_result!['sentences'] as List?) ?? [];
+    final grammarAnalysis = _result!['grammar_analysis'];
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Title
+        // Title card
         Card(
           color: const Color(0xFF1A1A1A),
           child: Padding(
@@ -141,16 +161,29 @@ class _LearnScreenState extends State<LearnScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_result!['topic_title_de'] ?? '',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(_result!['topic_title_de'] ?? '',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.volume_up, color: Color(0xFFFFCC00)),
+                      onPressed: () =>
+                          _tts.speak(_result!['topic_title_de'] ?? ''),
+                    ),
+                  ],
+                ),
                 Text(_result!['topic_title_cn'] ?? '',
-                    style: const TextStyle(color: Color(0xFFFFCC00), fontSize: 16)),
+                    style:
+                        const TextStyle(color: Color(0xFFFFCC00), fontSize: 16)),
                 const SizedBox(height: 8),
                 Text(_result!['summary_cn'] ?? '',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 14)),
               ],
             ),
           ),
@@ -172,7 +205,7 @@ class _LearnScreenState extends State<LearnScreen> {
           ),
         ),
 
-        // Vocabulary
+        // Vocabulary with IPA and TTS
         if (vocab.isNotEmpty) ...[
           const Text('核心词汇',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -189,10 +222,12 @@ class _LearnScreenState extends State<LearnScreen> {
                           children: [
                             Row(
                               children: [
-                                Text(v['german'] ?? '',
-                                    style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold)),
+                                Flexible(
+                                  child: Text(v['german'] ?? '',
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold)),
+                                ),
                                 if (v['gender'] != null) ...[
                                   const SizedBox(width: 8),
                                   Container(
@@ -210,6 +245,17 @@ class _LearnScreenState extends State<LearnScreen> {
                                 ],
                               ],
                             ),
+                            // IPA phonetics
+                            if (v['phonetic'] != null &&
+                                v['phonetic'].toString().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(v['phonetic'],
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.purple.shade400,
+                                        fontStyle: FontStyle.italic)),
+                              ),
                             Text(v['chinese'] ?? '',
                                 style:
                                     TextStyle(color: Colors.grey.shade600)),
@@ -224,13 +270,19 @@ class _LearnScreenState extends State<LearnScreen> {
                           ],
                         ),
                       ),
+                      IconButton(
+                        icon: Icon(Icons.volume_up,
+                            color: Colors.blue.shade600, size: 22),
+                        onPressed: () => _tts.speak(v['german'] ?? ''),
+                        tooltip: '朗读',
+                      ),
                     ],
                   ),
                 ),
               )),
         ],
 
-        // Sentences
+        // Sentences with TTS
         if (sentences.isNotEmpty) ...[
           const SizedBox(height: 16),
           const Text('重点句型',
@@ -243,10 +295,22 @@ class _LearnScreenState extends State<LearnScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(s['german'] ?? '',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(s['german'] ?? '',
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.volume_up,
+                                color: Colors.blue.shade600, size: 20),
+                            onPressed: () => _tts.speak(s['german'] ?? ''),
+                            tooltip: '朗读',
+                          ),
+                        ],
+                      ),
                       Text(s['chinese'] ?? '',
                           style: TextStyle(color: Colors.grey.shade600)),
                       if (s['grammar_note'] != null) ...[
@@ -276,6 +340,91 @@ class _LearnScreenState extends State<LearnScreen> {
                   ),
                 ),
               )),
+        ],
+
+        // Grammar Analysis (new structured section)
+        if (grammarAnalysis != null && grammarAnalysis is Map) ...[
+          const SizedBox(height: 16),
+          Card(
+            color: Colors.indigo.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.analytics, size: 20, color: Colors.indigo),
+                      SizedBox(width: 8),
+                      Text('语法分析',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.indigo)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (grammarAnalysis['points'] != null &&
+                      grammarAnalysis['points'] is List)
+                    ...((grammarAnalysis['points'] as List).map<Widget>((p) =>
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(p['name'] ?? '',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: Colors.indigo.shade700)),
+                              const SizedBox(height: 4),
+                              Text(p['explanation'] ?? '',
+                                  style: const TextStyle(fontSize: 13)),
+                              if (p['rule'] != null) ...[
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                        color: Colors.indigo.shade100),
+                                  ),
+                                  child: Text(p['rule'],
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontFamily: 'monospace',
+                                          color: Colors.indigo.shade600)),
+                                ),
+                              ],
+                              if (p['examples'] != null &&
+                                  p['examples'] is List)
+                                ...((p['examples'] as List).map<Widget>((ex) =>
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('  - ',
+                                              style: TextStyle(fontSize: 13)),
+                                          Expanded(
+                                            child: Text(ex.toString(),
+                                                style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontStyle:
+                                                        FontStyle.italic)),
+                                          ),
+                                        ],
+                                      ),
+                                    ))),
+                            ],
+                          ),
+                        ))),
+                ],
+              ),
+            ),
+          ),
         ],
 
         // Grammar tips

@@ -83,6 +83,20 @@ class LearningSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class DailyChapter(Base):
+    """Pre-generated daily chapters from heartbeat."""
+
+    __tablename__ = "daily_chapters"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    date: Mapped[str] = mapped_column(String, nullable=False, unique=True)  # YYYY-MM-DD
+    category: Mapped[str | None] = mapped_column(String, nullable=True)
+    content_json: Mapped[str] = mapped_column(Text, nullable=False)  # Full TopicResult as JSON
+    vocab_added: Mapped[int] = mapped_column(Integer, default=0)
+    sentences_added: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class AppConfig(Base):
     """Runtime configuration store."""
 

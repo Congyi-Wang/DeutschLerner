@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.storage.models import (
     AppConfig,
+    DailyChapter,
     LearningSession,
     Sentence,
     TopicHistory,
@@ -218,6 +219,39 @@ class Repository:
         )
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    # ── Daily Chapters ─────────────────────────────────────────
+
+    async def get_daily_chapter(self, date_str: str) -> DailyChapter | None:
+        """Get the pre-generated chapter for a specific date."""
+        result = await self.session.execute(
+            select(DailyChapter).where(DailyChapter.date == date_str)
+        )
+        return result.scalar_one_or_none()
+
+    async def save_daily_chapter(
+        self, date_str: str, category: str, content_json: str,
+        vocab_added: int = 0, sentences_added: int = 0,
+    ) -> DailyChapter:
+        """Save a pre-generated daily chapter (upsert by date)."""
+        existing = await self.get_daily_chapter(date_str)
+        if existing:
+            existing.content_json = content_json
+            existing.category = category
+            existing.vocab_added = vocab_added
+            existing.sentences_added = sentences_added
+            await self.session.flush()
+            return existing
+        chapter = DailyChapter(
+            date=date_str,
+            category=category,
+            content_json=content_json,
+            vocab_added=vocab_added,
+            sentences_added=sentences_added,
+        )
+        self.session.add(chapter)
+        await self.session.flush()
+        return chapter
 
     # ── App Config ──────────────────────────────────────────────
 

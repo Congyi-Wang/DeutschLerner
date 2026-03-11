@@ -1,6 +1,8 @@
 """APScheduler integration for heartbeat."""
 
+import json
 import logging
+from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -75,7 +77,7 @@ class HeartbeatScheduler:
         return await self._heartbeat_job()
 
     async def _heartbeat_job(self) -> dict:
-        """Execute one heartbeat cycle: select topic → generate → dispatch."""
+        """Execute one heartbeat cycle: generate topic, store as daily chapter, dispatch."""
         session = await get_session(self._db_path)
         try:
             repo = Repository(session)
@@ -113,6 +115,30 @@ class HeartbeatScheduler:
             sentences_added = await memory.add_sentences_batch(
                 topic.sentences, source_topic=topic.topic_title_de
             )
+
+            # Save as pre-generated daily chapter for tomorrow
+            tomorrow = (date.today() + timedelta(days=1)).isoformat()
+            chapter_data = {
+                "topic_title_de": topic.topic_title_de,
+                "topic_title_cn": topic.topic_title_cn,
+                "summary_cn": topic.summary_cn,
+                "vocabulary": topic.vocabulary,
+                "sentences": topic.sentences,
+                "grammar_tips": topic.grammar_tips,
+                "grammar_analysis": topic.grammar_analysis if hasattr(topic, "grammar_analysis") else None,
+                "exercise": topic.exercise,
+                "category": category,
+                "provider": topic.provider,
+            }
+            await repo.save_daily_chapter(
+                date_str=tomorrow,
+                category=category,
+                content_json=json.dumps(chapter_data, ensure_ascii=False),
+                vocab_added=vocab_added,
+                sentences_added=sentences_added,
+            )
+            logger.info("Pre-generated daily chapter saved for %s", tomorrow)
+
             await repo.commit()
 
             # Dispatch to channels
@@ -133,6 +159,7 @@ class HeartbeatScheduler:
                 "category": category,
                 "vocab_added": vocab_added,
                 "sentences_added": sentences_added,
+                "chapter_date": tomorrow,
                 "channels": {
                     "succeeded": dispatch_result.channels_succeeded,
                     "failed": dispatch_result.channels_failed,

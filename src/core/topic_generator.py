@@ -23,6 +23,7 @@ class TopicResult:
     vocabulary: list[dict] = field(default_factory=list)
     sentences: list[dict] = field(default_factory=list)
     grammar_tips: str = ""
+    grammar_analysis: dict | None = None
     exercise: str = ""
     raw_content: str = ""
     provider: str = ""
@@ -117,6 +118,7 @@ class TopicGenerator:
             vocabulary=data.get("vocabulary", []),
             sentences=data.get("sentences", []),
             grammar_tips=data.get("grammar_tips", ""),
+            grammar_analysis=data.get("grammar_analysis"),
             exercise=data.get("exercise", ""),
             raw_content=response.content,
             provider=response.provider,
