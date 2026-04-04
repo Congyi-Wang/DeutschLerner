@@ -35,15 +35,29 @@ class MemoryManager:
 
         This tells the AI what the user already knows so it can avoid
         repeating known vocabulary and build on existing knowledge.
+        Includes current level/module info for level-aware generation.
         """
+        from src.heartbeat.curriculum import get_current_module
+
         known = await self.get_known_words()
         learning = await self.get_learning_words()
         stats = await self.repo.get_stats()
+        vocab_count = stats["vocabulary"]["total"]
 
         parts = []
         parts.append(f"学习进度: {stats['vocabulary']['known']}个已掌握, "
                       f"{stats['vocabulary']['learning']}个学习中, "
                       f"{stats['vocabulary']['unknown']}个未学习")
+
+        # Add level context
+        module = get_current_module(vocab_count)
+        if module is not None:
+            parts.append(f"当前水平: A1 模块{module.id} — {module.name_cn}")
+            parts.append(f"模块说明: {module.description_cn}")
+            parts.append(f"当前语法重点: {', '.join(module.grammar_focus)}")
+            parts.append("请根据用户当前A1水平生成内容，词汇和句子要简单，句子不超过8个词。")
+        else:
+            parts.append("用户已完成A1，可以使用更丰富的词汇和语法。")
 
         if known:
             sample = known[:50]

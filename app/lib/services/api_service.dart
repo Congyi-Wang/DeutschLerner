@@ -113,6 +113,9 @@ class ApiService {
   Future<Map<String, dynamic>> getChapterByDate(String date) =>
       _get('/api/v1/chapter/$date');
 
+  // Level / Progress
+  Future<Map<String, dynamic>> getLevel() => _get('/api/v1/level');
+
   // Stats
   Future<Map<String, dynamic>> getStats() => _get('/api/v1/memory/stats');
 }

@@ -14,6 +14,7 @@ class DailyPlanScreen extends StatefulWidget {
 class _DailyPlanScreenState extends State<DailyPlanScreen> {
   Map<String, dynamic>? _plan;
   Map<String, dynamic>? _chapter;
+  Map<String, dynamic>? _level;
   bool _loading = true;
   String? _error;
 
@@ -29,16 +30,21 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
       _error = null;
     });
     try {
-      // Load plan and chapter in parallel
+      // Load plan, chapter, and level in parallel
       final results = await Future.wait([
         widget.api.getDailyPlan(),
         widget.api.getTodayChapter().catchError((_) => <String, dynamic>{}),
+        widget.api.getLevel().catchError((_) => <String, dynamic>{}),
       ]);
       setState(() {
         _plan = results[0];
         final ch = results[1];
         if (ch.isNotEmpty && ch['available'] == true) {
           _chapter = ch;
+        }
+        final lv = results[2];
+        if (lv.isNotEmpty && lv['level'] != null) {
+          _level = lv;
         }
         _loading = false;
       });
@@ -249,6 +255,77 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
                     ),
                   );
                 },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
+          // Level progress card
+          if (_level != null && _level!['module_id'] != null) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDD0000),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _level!['level'] ?? 'A1',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '模块${_level!['module_id']}: ${_level!['module_name_cn'] ?? ''}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${_level!['current_module_num']} / ${_level!['total_modules']}',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (_level!['progress_percent'] ?? 0) / 100.0,
+                        minHeight: 8,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFFDD0000)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_level!['vocab_count'] ?? 0} / ${_level!['target_vocab'] ?? 0} 词汇',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 8),

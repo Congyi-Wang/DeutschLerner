@@ -99,6 +99,29 @@ class TopicGenerator:
         response = await self.ai.generate(system_prompt, user_message)
         return self._parse_response(response)
 
+    async def generate_a1_topic(self, topic: str, module: object) -> TopicResult:
+        """Generate an A1-level heartbeat topic for a specific module.
+
+        Args:
+            topic: The specific topic description (e.g. '打招呼和问候').
+            module: An A1Module dataclass with name_cn, description_cn, grammar_focus.
+
+        Returns:
+            A structured TopicResult.
+        """
+        system_prompt = _load_prompt("heartbeat_a1.md")
+        system_prompt = system_prompt.replace("{module_name}", module.name_cn)
+        system_prompt = system_prompt.replace("{module_description}", module.description_cn)
+        system_prompt = system_prompt.replace(
+            "{grammar_focus}",
+            "\n".join(f"- {g}" for g in module.grammar_focus),
+        )
+        system_prompt = system_prompt.replace("{topic}", topic)
+
+        user_message = f"请围绕「{topic}」生成一个A1入门级别的德语学习内容。当前模块：{module.name_cn}。"
+        response = await self.ai.generate(system_prompt, user_message)
+        return self._parse_response(response)
+
     def _parse_response(self, response: AIResponse) -> TopicResult:
         """Parse an AI response into a structured TopicResult."""
         data = _extract_json(response.content)

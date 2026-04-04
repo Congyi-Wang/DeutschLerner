@@ -39,7 +39,7 @@ heartbeat:
       to_number: "${WHATSAPP_TO}"
 
 learning:
-  difficulty: "A2"
-  vocab_per_topic: 8
-  sentences_per_topic: 4
+  difficulty: "A1"
+  vocab_per_topic: 6
+  sentences_per_topic: 3
   teaching_language: "chinese"

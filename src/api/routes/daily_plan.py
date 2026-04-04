@@ -197,11 +197,20 @@ async def get_daily_plan(
                 total_minutes = 30
                 break
 
-    # Greeting based on stats
+    # Greeting based on stats + level
+    from src.heartbeat.curriculum import get_current_module
+
     total_vocab = stats["vocabulary"]["total"]
     known = stats["vocabulary"]["known"]
+    module = get_current_module(total_vocab)
+
     if total_vocab == 0:
         greeting = "Willkommen! 欢迎开始你的德语学习之旅！今天是第一天，让我们开始吧！"
+    elif module is not None:
+        greeting = (
+            f"Guten Tag! A1·模块{module.id}: {module.name_cn}"
+            f" — 已掌握 {total_vocab}/{module.target_vocab} 词汇"
+        )
     elif known > 50:
         greeting = f"Sehr gut! 你已经掌握了 {known} 个词汇，继续加油！"
     else:

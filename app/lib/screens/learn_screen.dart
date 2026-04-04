@@ -21,10 +21,12 @@ class _LearnScreenState extends State<LearnScreen> {
   final _inputCtrl = TextEditingController();
   final _tts = TtsService();
   Map<String, dynamic>? _result;
+  Map<String, dynamic>? _level;
   bool _loading = false;
   String? _error;
 
-  final _suggestions = [
+  // Default suggestions (used when no level info or A1 completed)
+  static const _defaultSuggestions = [
     '在超市购物',
     '去餐厅点餐',
     '问路和交通',
@@ -35,6 +37,24 @@ class _LearnScreenState extends State<LearnScreen> {
     '天气和季节',
   ];
 
+  // Module-specific suggestions
+  static const _moduleSuggestions = {
+    1: ['打招呼', '自我介绍', '告别用语', '礼貌用语', '认识朋友'],
+    2: ['数字练习', '几点了', '星期几', '我的一天', '日常安排'],
+    3: ['我的家庭', '兴趣爱好', '周末活动', '运动', '朋友聚会'],
+    4: ['超市购物', '餐厅点餐', '食物饮料', '问路', '价格付款'],
+    5: ['我的房间', '找房子', '坐公交', '买火车票', '旅行计划'],
+    6: ['身体部位', '看医生', '今天天气', '季节和衣服', '邮局银行'],
+  };
+
+  List<String> get _suggestions {
+    if (_level != null && _level!['module_id'] != null) {
+      final moduleId = _level!['module_id'] as int;
+      return _moduleSuggestions[moduleId] ?? _defaultSuggestions;
+    }
+    return _defaultSuggestions;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -42,9 +62,26 @@ class _LearnScreenState extends State<LearnScreen> {
     if (widget.preloadedChapter != null) {
       _result = widget.preloadedChapter;
     } else if (widget.autoStart) {
-      _inputCtrl.text = _suggestions[DateTime.now().day % _suggestions.length];
-      _generate();
+      _loadLevelThenAutoStart();
+    } else {
+      _loadLevel();
     }
+  }
+
+  Future<void> _loadLevel() async {
+    try {
+      final lv = await widget.api.getLevel();
+      if (mounted) setState(() => _level = lv);
+    } catch (_) {}
+  }
+
+  Future<void> _loadLevelThenAutoStart() async {
+    try {
+      final lv = await widget.api.getLevel();
+      if (mounted) setState(() => _level = lv);
+    } catch (_) {}
+    _inputCtrl.text = _suggestions[DateTime.now().day % _suggestions.length];
+    _generate();
   }
 
   @override
@@ -184,9 +221,34 @@ class _LearnScreenState extends State<LearnScreen> {
                     ),
                   ],
                 ),
-                Text(_result!['topic_title_cn'] ?? '',
-                    style:
-                        const TextStyle(color: Color(0xFFFFCC00), fontSize: 16)),
+                Row(
+                  children: [
+                    if (_result!['module_id'] != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDD0000),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'A1·M${_result!['module_id']}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    Expanded(
+                      child: Text(_result!['topic_title_cn'] ?? '',
+                          style: const TextStyle(
+                              color: Color(0xFFFFCC00), fontSize: 16)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 Text(_result!['summary_cn'] ?? '',
                     style:

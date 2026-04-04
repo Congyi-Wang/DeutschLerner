@@ -91,18 +91,25 @@ class HeartbeatScheduler:
             topic_gen = TopicGenerator(provider)
             memory = MemoryManager(repo)
 
-            # Select category and generate topic
-            category = await selector.select_category()
+            # Select topic — level-aware (A1 curriculum or random)
+            topic_desc, category, a1_module = await selector.select_topic_for_level()
             topic = None
 
             for attempt in range(MAX_DEDUP_RETRIES):
-                topic = await topic_gen.generate_heartbeat_topic(category)
+                if a1_module is not None:
+                    topic = await topic_gen.generate_a1_topic(topic_desc, a1_module)
+                else:
+                    topic = await topic_gen.generate_heartbeat_topic(category)
                 if not await selector.is_duplicate(topic.topic_title_de):
                     break
                 logger.info("Duplicate topic '%s', retrying (%d/%d)",
                             topic.topic_title_de, attempt + 1, MAX_DEDUP_RETRIES)
                 if attempt == MAX_DEDUP_RETRIES - 1:
-                    category = await selector.select_category()
+                    if a1_module is not None:
+                        # Re-select within the same module
+                        topic_desc, category, a1_module = await selector.select_topic_for_level()
+                    else:
+                        category = await selector.select_category()
 
             if topic is None:
                 logger.error("Failed to generate a heartbeat topic")
@@ -130,6 +137,10 @@ class HeartbeatScheduler:
                 "category": category,
                 "provider": topic.provider,
             }
+            if a1_module is not None:
+                chapter_data["module_id"] = a1_module.id
+                chapter_data["module_name_cn"] = a1_module.name_cn
+                chapter_data["level"] = "A1"
             await repo.save_daily_chapter(
                 date_str=tomorrow,
                 category=category,

@@ -171,6 +171,16 @@ class Repository:
         result = await self.session.execute(query)
         return result.scalar_one()
 
+    async def get_recent_topic_titles(self, limit: int = 20) -> list[str]:
+        """Get recent topic titles from topic history for dedup."""
+        query = (
+            select(TopicHistory.topic)
+            .order_by(TopicHistory.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        return [row[0] for row in result.all()]
+
     # ── Topic History ───────────────────────────────────────────
 
     async def add_topic_history(self, **kwargs: object) -> TopicHistory:
