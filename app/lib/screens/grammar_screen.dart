@@ -12,17 +12,23 @@ class GrammarScreen extends StatefulWidget {
 
 class _GrammarScreenState extends State<GrammarScreen> {
   List<Map<String, dynamic>> _exercises = [];
+  List<Map<String, dynamic>> _lessons = [];
   int _current = 0;
   int _correct = 0;
   bool _loading = true;
   String? _error;
   String? _moduleName;
+  bool _showingLessons = true;
 
   // Per-exercise state
   bool _answered = false;
   String? _selected;
   List<String> _selectedOrder = [];
   Map<String, String> _conjugationAnswers = {};
+
+  // Lesson PageView
+  final PageController _lessonPageController = PageController();
+  int _currentLessonPage = 0;
 
   final _tts = TtsService();
 
@@ -31,6 +37,12 @@ class _GrammarScreenState extends State<GrammarScreen> {
     super.initState();
     _tts.init();
     _loadExercises();
+  }
+
+  @override
+  void dispose() {
+    _lessonPageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadExercises() async {
@@ -43,7 +55,12 @@ class _GrammarScreenState extends State<GrammarScreen> {
       setState(() {
         _exercises =
             (data['exercises'] as List).cast<Map<String, dynamic>>();
+        _lessons = data['lessons'] != null
+            ? (data['lessons'] as List).cast<Map<String, dynamic>>()
+            : [];
         _moduleName = data['module_name_cn'] as String?;
+        _showingLessons = _lessons.isNotEmpty;
+        _currentLessonPage = 0;
         _loading = false;
       });
     } catch (e) {
@@ -70,7 +87,7 @@ class _GrammarScreenState extends State<GrammarScreen> {
       appBar: AppBar(
         title: Text(_moduleName != null ? '语法练习 · $_moduleName' : '语法练习'),
         actions: [
-          if (_exercises.isNotEmpty)
+          if (!_showingLessons && _exercises.isNotEmpty)
             Center(
               child: Padding(
                 padding: const EdgeInsets.only(right: 16),
@@ -98,11 +115,256 @@ class _GrammarScreenState extends State<GrammarScreen> {
                     ],
                   ),
                 )
-              : _exercises.isEmpty
-                  ? const Center(child: Text('暂无练习题'))
-                  : _current >= _exercises.length
-                      ? _buildResult()
-                      : _buildExercise(_exercises[_current]),
+              : _showingLessons
+                  ? _buildLessonView()
+                  : _exercises.isEmpty
+                      ? const Center(child: Text('暂无练习题'))
+                      : _current >= _exercises.length
+                          ? _buildResult()
+                          : _buildExercise(_exercises[_current]),
+    );
+  }
+
+  // === Lesson Cards ===
+  Widget _buildLessonView() {
+    return Column(
+      children: [
+        Expanded(
+          child: PageView.builder(
+            controller: _lessonPageController,
+            itemCount: _lessons.length,
+            onPageChanged: (i) => setState(() => _currentLessonPage = i),
+            itemBuilder: (context, index) => _buildLessonCard(_lessons[index]),
+          ),
+        ),
+        // Page indicator + button
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            child: Column(
+              children: [
+                // Dots
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_lessons.length, (i) {
+                    return Container(
+                      width: 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: i == _currentLessonPage
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.grey.shade300,
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_currentLessonPage < _lessons.length - 1) {
+                        _lessonPageController.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      } else {
+                        setState(() => _showingLessons = false);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(
+                      _currentLessonPage < _lessons.length - 1
+                          ? '下一课'
+                          : '开始练习',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLessonCard(Map<String, dynamic> lesson) {
+    final title = lesson['title'] as String;
+    final explanation = lesson['explanation_cn'] as String;
+    final examples = (lesson['examples'] as List).cast<Map<String, dynamic>>();
+    final table = lesson['table'] as Map<String, dynamic>?;
+    final tip = lesson['tip_cn'] as String;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title
+          Row(
+            children: [
+              Icon(Icons.menu_book, color: Colors.blue.shade700, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Explanation
+          Text(
+            explanation,
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          ),
+          const SizedBox(height: 20),
+
+          // Conjugation/declension table
+          if (table != null) ...[
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade100),
+              ),
+              child: Column(
+                children: table.entries.map((e) {
+                  final isLast = e.key == table.entries.last.key;
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: table.entries.toList().indexOf(e).isEven
+                          ? Colors.blue.shade50
+                          : Colors.white,
+                      borderRadius: isLast
+                          ? const BorderRadius.vertical(bottom: Radius.circular(9))
+                          : table.entries.first.key == e.key
+                              ? const BorderRadius.vertical(top: Radius.circular(9))
+                              : null,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          child: Text(
+                            e.key,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            e.value.toString(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Examples
+          const Text(
+            '例句',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          ...examples.map((ex) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ex['de'] as String,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            ex['cn'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.volume_up, size: 20, color: Colors.blue.shade600),
+                      onPressed: () => _tts.speak(ex['de'] as String),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+          // Tip box
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.lightbulb, size: 18, color: Colors.amber.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    tip,
+                    style: TextStyle(fontSize: 13, color: Colors.amber.shade900),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
