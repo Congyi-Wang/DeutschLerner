@@ -116,6 +116,10 @@ class ApiService {
   // Level / Progress
   Future<Map<String, dynamic>> getLevel() => _get('/api/v1/level');
 
+  // Grammar exercises
+  Future<Map<String, dynamic>> getGrammarExercises() =>
+      _get('/api/v1/grammar/exercises');
+
   // Stats
   Future<Map<String, dynamic>> getStats() => _get('/api/v1/memory/stats');
 }

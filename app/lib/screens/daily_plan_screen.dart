@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/tts_service.dart';
+import 'grammar_screen.dart';
 import 'learn_screen.dart';
 
 class DailyPlanScreen extends StatefulWidget {
@@ -68,6 +69,8 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
         return Icons.short_text;
       case 'quiz':
         return Icons.quiz;
+      case 'grammar_drill':
+        return Icons.rule;
       default:
         return Icons.task;
     }
@@ -85,6 +88,8 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
         return const Color(0xFF4CAF50);
       case 'quiz':
         return const Color(0xFF9C27B0);
+      case 'grammar_drill':
+        return const Color(0xFF009688);
       default:
         return Colors.grey;
     }
@@ -123,6 +128,16 @@ class _DailyPlanScreenState extends State<DailyPlanScreen> {
 
     if (type == 'sentence_practice') {
       _showSentencePractice(task);
+      return;
+    }
+
+    if (type == 'grammar_drill') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => GrammarScreen(api: widget.api),
+        ),
+      );
       return;
     }
 

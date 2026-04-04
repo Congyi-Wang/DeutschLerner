@@ -132,7 +132,22 @@ async def get_daily_plan(
     order += 1
     total_minutes += 15
 
-    # --- Task 4: Sentence Practice (10 min) ---
+    # --- Task 4: Grammar Drill (10 min) ---
+    tasks.append(DailyTask(
+        order=order,
+        type="grammar_drill",
+        title="Grammatikübung",
+        title_cn="语法练习",
+        duration_minutes=10,
+        data={
+            "instruction_cn": "练习冠词、动词变位、填空和语序",
+            "action": "grammar",
+        },
+    ))
+    order += 1
+    total_minutes += 10
+
+    # --- Task 5: Sentence Practice (10 min) ---
     sentences = await repo.list_sentences(status="unknown", limit=5)
     sentence_data = [
         {
